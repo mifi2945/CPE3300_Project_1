@@ -26,5 +26,6 @@
 #include "spi.h"
 #include "matrix.h"
 #include "accelerometer.h"
+#include "protocol.h"
 
 #endif /* INCLUDE_H_ */

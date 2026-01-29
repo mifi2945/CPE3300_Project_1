@@ -38,7 +38,7 @@ static void tim_init(void) {
 
 	tim2->DIER |= 0b101;
 
-	nvic[ISER0] = 1<<28; //TIM3 is IRQ 28
+	nvic[ISER0] = 1<<28; //TIM2 is IRQ 28
 
 	tim2->CR1 = 1;
 }
