@@ -80,52 +80,52 @@ uint16_t ir_get_command(void) {
 	return ret;
 }
 
-void TIM2_IRQHandler(void) {
-	static enum State state = WAIT_START;
-	static volatile int i = 0;
-	static volatile uint16_t time = 0;
-	static volatile const int milli = F_CPU / 1000;
-	// interrupt flag is cleared by reading CCR2
-
-	tim2->SR = ~(1<<2);
-
-
-	if (ir_ready_flag == 0) {
-		uint16_t current_time = tim2->CCR2;
-		if (state == WAIT_START) {
-			time = current_time;
-			state = WAIT_END_OF_START;
-		} else if (state == WAIT_END_OF_START) {
-			uint16_t width = current_time - time;
-			if (width > 5*milli/2 && width <= 7*milli/2){
-				time = current_time;
-				i = 0;
-				state = WAIT_BITS;
-			} else {
-				// error
-				state = WAIT_START;
-			}
-		} else if (state == WAIT_BITS) {
-			uint16_t width = current_time - time;
-			if (width > milli/4 && width < 3*milli/2) {
-				// 0 interpreted
-				time = current_time;
-				//ir_command |= (0<<i);
-				i = i + 1;
-			} else if (width >= 3*milli/2 && width < 5*milli/2) {
-				// 1 interpreted
-				time = current_time;
-				ir_command |= (1<<i);
-				i = i + 1;
-			} else {
-				// error
-				state = WAIT_START;
-			}
-			if (i == 11) {
-				ir_ready_flag = 1;
-				//printf("%X\n",ir_command);
-				state = WAIT_START;
-			}
-		}
-	}
-}
+//void TIM2_IRQHandler(void) {
+//	static enum State state = WAIT_START;
+//	static volatile int i = 0;
+//	static volatile uint16_t time = 0;
+//	static volatile const int milli = F_CPU / 1000;
+//	// interrupt flag is cleared by reading CCR2
+//
+//	tim2->SR = ~(1<<2);
+//
+//
+//	if (ir_ready_flag == 0) {
+//		uint16_t current_time = tim2->CCR2;
+//		if (state == WAIT_START) {
+//			time = current_time;
+//			state = WAIT_END_OF_START;
+//		} else if (state == WAIT_END_OF_START) {
+//			uint16_t width = current_time - time;
+//			if (width > 5*milli/2 && width <= 7*milli/2){
+//				time = current_time;
+//				i = 0;
+//				state = WAIT_BITS;
+//			} else {
+//				// error
+//				state = WAIT_START;
+//			}
+//		} else if (state == WAIT_BITS) {
+//			uint16_t width = current_time - time;
+//			if (width > milli/4 && width < 3*milli/2) {
+//				// 0 interpreted
+//				time = current_time;
+//				//ir_command |= (0<<i);
+//				i = i + 1;
+//			} else if (width >= 3*milli/2 && width < 5*milli/2) {
+//				// 1 interpreted
+//				time = current_time;
+//				ir_command |= (1<<i);
+//				i = i + 1;
+//			} else {
+//				// error
+//				state = WAIT_START;
+//			}
+//			if (i == 11) {
+//				ir_ready_flag = 1;
+//				//printf("%X\n",ir_command);
+//				state = WAIT_START;
+//			}
+//		}
+//	}
+//}

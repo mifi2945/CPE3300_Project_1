@@ -9,10 +9,19 @@
 #include "gpio.h"
 #include "interrupt.h"
 #include "timer.h"
+#include <string.h>
+#include <stdio.h>
 
 static uint8_t PREAMBLE = 0x55;
+static char MESSAGE[255 + 2];
+static int curr_char = 0;
+static uint8_t curr_bit = 7;
+//static int length = 0;
+static int transmitting = 0; // false
 
 void init_protocol(void) {
+	MESSAGE[0] = PREAMBLE;
+
 	volatile uint32_t *rcc_ahb1enr = (uint32_t*) RCC_AHB1_ENR;
 	*rcc_ahb1enr |= GPIOBEN;
 
@@ -29,67 +38,79 @@ void init_protocol(void) {
 	gpiob->AFRL &= ~(0b1111<<3*4); // clear
 	gpiob->AFRL |= (0b0001<<3*4); // AF1
 
-//	tim2->ARR = ; //TODO
-	tim2->DIER |= (1<<2); // capture/compare interrupt enable 2
+	tim2->ARR = F_CPU / 1000 - 1; //TODO
+	tim2->DIER |= (1<<2) | 1; // capture/compare and update interrupt enable 2
 	tim2->CCMR1 |= (0b001<<12); // OC2M, active level on match
-//	tim2->CCR2 =
+	tim2->CCR2 = F_CPU / 1000 / 2 - 1;
 
 	nvic[ISER0] = 1<<28; //TIM2 is IRQ 28
 	tim2->CR1 = 1;
 }
 
-void transmit(int length, char* message) {
-	// preamble
-	for(int size = 7; size >= 0; --size) {
-		if (PREAMBLE & (1<<size)) {
-			gpiob->BSRR = 1<<(6+16); // reset
-			delay_us(500);
-			gpiob->BSRR = 1<<(6); // set
-			delay_us(500);
-		} else {
-			gpiob->BSRR = 1<<(6); // set
-			delay_us(500);
-			gpiob->BSRR = 1<<(6+16); // reset
-			delay_us(500);
-		}
-	}
-
-	// length
-	for(int size = 7; size >= 0; --size) {
-		if (length & (1<<size)) {
-			gpiob->BSRR = 1<<(6+16); // reset
-			delay_us(500);
-			gpiob->BSRR = 1<<(6); // set
-			delay_us(500);
-		} else {
-			gpiob->BSRR = 1<<(6); // set
-			delay_us(500);
-			gpiob->BSRR = 1<<(6+16); // reset
-			delay_us(500);
-		}
-	}
+void transmit(uint8_t length, char* message) {
+	MESSAGE[0] = PREAMBLE;
+	MESSAGE[1] = length;
 
 	// message
 	for(int i = 0; i < length; ++i) {
-		uint8_t c = message[i];
-		for(int size = 7; size >= 0; --size) {
-			// if bit is 1
-			if (c & (1<<size)) {
-				gpiob->BSRR = 1<<(6+16); // reset
-				delay_us(500);
-				gpiob->BSRR = 1<<(6); // set
-				delay_us(500);
-			} else {
-				gpiob->BSRR = 1<<(6); // set
-				delay_us(500);
-				gpiob->BSRR = 1<<(6+16); // reset
-				delay_us(500);
-			}
-		}
+		MESSAGE[i+2] = message[i];
 	}
-	gpiob->BSRR = 1<<6; // set high
+
+	curr_char = 0;
+	curr_bit = 7;
+	transmitting = (length + 2) * 8 * 2;
+
+//	for(int i = 0; i < length; ++i) {
+//		uint8_t c = message[i];
+//		for(int size = 7; size >= 0; --size) {
+//			// if bit is 1
+//			if (c & (1<<size)) {
+//				gpiob->BSRR = 1<<(6+16); // reset
+//				delay_us(500);
+//				gpiob->BSRR = 1<<(6); // set
+//				delay_us(500);
+//			} else {
+//				gpiob->BSRR = 1<<(6); // set
+//				delay_us(500);
+//				gpiob->BSRR = 1<<(6+16); // reset
+//				delay_us(500);
+//			}
+//		}
+//	}
+//	gpiob->BSRR = 1<<6; // set high
 }
 
 void TIM2_IRQHandler(void) {
+	uint16_t sr = tim2->SR;
+	tim2->SR = ~(111);
+	if (transmitting) {
+		uint8_t c = MESSAGE[curr_char];
+		uint8_t bit = c & (1<<curr_bit--);
+
+		// capture event, first bit
+		if (sr & (1<<2)) {
+			if (bit) {
+				gpiob->BSRR = 1<<(6+16); // reset
+			} else {
+				gpiob->BSRR = 1<<(6); // set
+			}
+		}
+		// update event
+		else if (sr & 1) {
+			if (bit) {
+				gpiob->BSRR = 1<<(6); // set
+			} else {
+				gpiob->BSRR = 1<<(6 + 16); // reset
+			}
+		}
+
+		transmitting--;
+
+		// move character
+		if (curr_bit == 0) {
+			curr_bit = 7;
+			curr_char++;
+		}
+	}
 
 }

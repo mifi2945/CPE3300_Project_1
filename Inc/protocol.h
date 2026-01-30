@@ -9,6 +9,6 @@
 #define PROTOCOL_H_
 
 void init_protocol(void);
-void transmit(int length, char* message);
+void transmit(uint8_t length, char* message);
 
 #endif /* PROTOCOL_H_ */
