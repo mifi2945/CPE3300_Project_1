@@ -15,7 +15,7 @@
 static uint8_t PREAMBLE = 0x55;
 static char MESSAGE[255 + 2];
 static int curr_char = 0;
-static uint8_t curr_bit = 7;
+static int curr_bit = 7;
 //static int length = 0;
 static int transmitting = 0; // false
 
@@ -85,11 +85,13 @@ void TIM2_IRQHandler(void) {
 	tim2->SR = ~(111);
 	if (transmitting) {
 		uint8_t c = MESSAGE[curr_char];
-		uint8_t bit = c & (1<<curr_bit--);
+		uint8_t bit = c & (1<<curr_bit);
 
 		// capture event, first bit
 		if (sr & (1<<2)) {
+//			printf("%d ", tim2->CNT);
 			if (bit) {
+//				printf("%d ", bit);
 				gpiob->BSRR = 1<<(6+16); // reset
 			} else {
 				gpiob->BSRR = 1<<(6); // set
@@ -97,17 +99,20 @@ void TIM2_IRQHandler(void) {
 		}
 		// update event
 		else if (sr & 1) {
+//			printf("%d ", tim2->CNT);
 			if (bit) {
+//				printf("%d ", bit);
 				gpiob->BSRR = 1<<(6); // set
 			} else {
 				gpiob->BSRR = 1<<(6 + 16); // reset
 			}
+			curr_bit--;
 		}
 
 		transmitting--;
 
 		// move character
-		if (curr_bit == 0) {
+		if (curr_bit == -1) {
 			curr_bit = 7;
 			curr_char++;
 		}
