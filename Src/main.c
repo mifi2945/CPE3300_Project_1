@@ -33,6 +33,8 @@ int main(void){
 		if (c != '\n') {
 			string[length++] = c;
 		} else {
+			// TODO can add logic to make sure string !> 255
+			// but no reason if it is a precondition of project
 			transmit(length, string);
 			length = 0;
 		}
