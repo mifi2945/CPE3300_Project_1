@@ -56,6 +56,9 @@ void transmit(uint8_t length, char* message) {
 
 	curr_char = 0;
 	curr_bit = 7;
+				// length + 2 bytes in MESSAGE
+				// * 8 bits per byte
+				// * 2 bits per bit for Manchester
 	transmitting = (length + 2) * 8 * 2 + 1; // +1 for going back to idle
 }
 

@@ -1,15 +1,11 @@
 /**
-  ******************************************************************************
-  * @file		main.c
-  * @brief		Use the
-  *
-  * Course:		CPE 2610
-  * Section:	131
-  * Assignment:	Lab Week x
-  * Name:		Mikhail Filippov
-  * Summary:
-  ******************************************************************************
-*/
+/*
+ * protocol.c
+ *
+ *  Created on: Jan 28, 2026
+ *      Author: filippovm, acostal
+ */
+
 
 
 
