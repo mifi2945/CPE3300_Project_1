@@ -49,6 +49,18 @@ static void init_monitor(void) {
 	//pb4 for rx
 	gpiob->MODER &= ~(0b11<<4*2);//set as input
 
+	//init timer 3
+	RCC->APB1ENR |= RCC_APB1ENR_TIM3EN;
+	//tim3->ARR = F_CPU / 1000 - 1; // millisecond
+	tim3->DIER |= (1<<1); //
+	tim3->CCMR1 |= 0b01; //input
+	tim3->CCER |= (1<<0) | (0b1<<1) | (1<<3);// set CC1P = 11 non-inverted both edges // set CC1NP to 1
+	tim3->CR1 = 1;//enable timer 3
+
+
+
+
+
 	//turn on sysconfig
 	RCC->APB2ENR |= RCC_APB2ENR_SYSCFGEN;
 
@@ -62,8 +74,11 @@ static void init_monitor(void) {
 	EXTI->PR = EXTI_PR_PR4;//clears pr
 	EXTI->IMR |= EXTI_IMR_IM4;
 
-	//nvic enabele for exti
+	//nvic enabele for exti and timer3
 	NVIC->ISER[0] = 1 << (EXTI4_IRQn);
+	NVIC->ISER[0] = 1 << (TIM3_IRQn);
+
+
 }
 
 void init_protocol(void) {
@@ -94,9 +109,9 @@ void transmit(uint8_t length, char* message) {
 static void set_state(enum Rx_State state) {
 	// set pins
 	// PB5 = IDLE, PB6 = BUSY, PB7 = COLISSION
-	gpiob->BSRR = 1 << (5 + (state==IDLE ? 0 : 16));
-	gpiob->BSRR = 1 << (6 + (state==BUSY ? 0 : 16));
-	gpiob->BSRR = 1 << (7 + (state==COLLISION ? 0 : 16));
+	gpiob->BSRR = 1 << (0 + (state==IDLE ? 0 : 16));
+	gpiob->BSRR = 1 << (1 + (state==BUSY ? 0 : 16));
+	gpiob->BSRR = 1 << (2 + (state==COLLISION ? 0 : 16));
 
 	// set state variable
 	curr_state = state;
@@ -146,4 +161,8 @@ void EXTI4_IRQHandler(void) {
 	// RX edge handler
 	EXTI->PR = 1 << 4;
 	printf("EDGE");
+}
+
+void TIM3_IRQHandler(void){
+
 }
