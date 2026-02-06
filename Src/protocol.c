@@ -5,7 +5,7 @@
  *      Author: filippovm, acostal
  */
 
-
+#include "protocol.h"
 #include "gpio.h"
 #include "interrupt.h"
 #include "timer.h"
@@ -18,7 +18,7 @@ static int curr_char = 0;
 static int curr_bit = 7;
 static int transmitting = 0; // false
 
-static enum Rx_State curr_state = BUSY;
+static enum Rx_State curr_state = IDLE;
 
 static void init_transmit(void) {
 	MESSAGE[0] = PREAMBLE;
@@ -58,12 +58,12 @@ static void init_monitor(void) {
 
 	//exti configuration
 	EXTI->FTSR |= EXTI_FTSR_TR4;
-	EXTI->RTSR &= ~EXTI_RTSR_TR4;
+	EXTI->RTSR |= EXTI_RTSR_TR4;
 	EXTI->PR = EXTI_PR_PR4;//clears pr
 	EXTI->IMR |= EXTI_IMR_IM4;
 
 	//nvic enabele for exti
-	NVIC->ISER[1] = 1 << (EXTI4_IRQn); 
+	NVIC->ISER[0] = 1 << (EXTI4_IRQn);
 }
 
 void init_protocol(void) {
@@ -96,7 +96,7 @@ static void set_state(enum Rx_State state) {
 	// PB5 = IDLE, PB6 = BUSY, PB7 = COLISSION
 	gpiob->BSRR = 1 << (5 + (state==IDLE ? 0 : 16));
 	gpiob->BSRR = 1 << (6 + (state==BUSY ? 0 : 16));
-	gpiob->BSRR = 1 << (7 + (state==COLISSION ? 0 : 16));
+	gpiob->BSRR = 1 << (7 + (state==COLLISION ? 0 : 16));
 
 	// set state variable
 	curr_state = state;
@@ -144,6 +144,6 @@ void TIM2_IRQHandler(void) {
 
 void EXTI4_IRQHandler(void) {
 	// RX edge handler
-	exti[PR] = 1 << 4;
+	EXTI->PR = 1 << 4;
 	printf("EDGE");
 }

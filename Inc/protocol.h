@@ -8,6 +8,8 @@
 #ifndef PROTOCOL_H_
 #define PROTOCOL_H_
 
+#include <stdint.h>
+
 enum Rx_State {
 	IDLE,
 	BUSY,
