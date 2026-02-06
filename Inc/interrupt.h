@@ -15,12 +15,12 @@
 #include <stdint.h>
 
 #define EXTI	0x40013C00
-#define IMR		0
-#define EMR		1
-#define RTSR	2
-#define FTSR	3
-#define SWIER	4
-#define PR		5
+//#define IMR		0
+//#define EMR		1
+//#define RTSR	2
+//#define FTSR	3
+//#define SWIER	4
+//#define PR		5
 
 
 #define SYSCFG	0x40013800

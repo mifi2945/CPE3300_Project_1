@@ -8,6 +8,12 @@
 #ifndef PROTOCOL_H_
 #define PROTOCOL_H_
 
+enum Rx_State {
+	IDLE,
+	BUSY,
+	COLLISION
+};
+
 void init_protocol(void);
 void transmit(uint8_t length, char* message);
 

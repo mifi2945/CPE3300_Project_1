@@ -9,6 +9,7 @@
 #include "gpio.h"
 #include "interrupt.h"
 #include "timer.h"
+#include "stm32f411.h"
 #include <stdio.h>
 
 static uint8_t PREAMBLE = 0x55;
@@ -17,11 +18,10 @@ static int curr_char = 0;
 static int curr_bit = 7;
 static int transmitting = 0; // false
 
-void init_protocol(void) {
-	MESSAGE[0] = PREAMBLE;
+static enum Rx_State curr_state = BUSY;
 
-	volatile uint32_t *rcc_ahb1enr = (uint32_t*) RCC_AHB1_ENR;
-	*rcc_ahb1enr |= GPIOBEN;
+static void init_transmit(void) {
+	MESSAGE[0] = PREAMBLE;
 
 	gpiob->MODER |= (0b01<<12);
 	gpiob->BSRR = 1<<6; // set high
@@ -45,6 +45,35 @@ void init_protocol(void) {
 	tim2->CR1 = 1; // timer enable
 }
 
+static void init_monitor(void) {
+	//pb4 for rx
+	gpiob->MODER &= ~(0b11<<4*2);//set as input
+
+	//turn on sysconfig
+	RCC->APB2ENR |= RCC_APB2ENR_SYSCFGEN;
+
+	//port B
+	volatile uint32_t *syscfg = (uint32_t*) SYSCFG;
+	syscfg[3] = 0b0001;
+
+	//exti configuration
+	EXTI->FTSR |= EXTI_FTSR_TR4;
+	EXTI->RTSR &= ~EXTI_RTSR_TR4;
+	EXTI->PR = EXTI_PR_PR4;//clears pr
+	EXTI->IMR |= EXTI_IMR_IM4;
+
+	//nvic enabele for exti
+	NVIC->ISER[1] = 1 << (EXTI4_IRQn); 
+}
+
+void init_protocol(void) {
+	volatile uint32_t *rcc_ahb1enr = (uint32_t*) RCC_AHB1_ENR;
+	*rcc_ahb1enr |= GPIOBEN;
+
+	init_transmit();
+	init_monitor();
+}
+
 void transmit(uint8_t length, char* message) {
 	MESSAGE[0] = PREAMBLE;
 	MESSAGE[1] = length;
@@ -62,6 +91,18 @@ void transmit(uint8_t length, char* message) {
 	transmitting = (length + 2) * 8 * 2 + 1; // +1 for going back to idle
 }
 
+static void set_state(enum Rx_State state) {
+	// set pins
+	// PB5 = IDLE, PB6 = BUSY, PB7 = COLISSION
+	gpiob->BSRR = 1 << (5 + (state==IDLE ? 0 : 16));
+	gpiob->BSRR = 1 << (6 + (state==BUSY ? 0 : 16));
+	gpiob->BSRR = 1 << (7 + (state==COLISSION ? 0 : 16));
+
+	// set state variable
+	curr_state = state;
+}
+
+// transmit handler
 void TIM2_IRQHandler(void) {
 	uint16_t sr = tim2->SR;
 	tim2->SR = ~(111);
@@ -99,4 +140,10 @@ void TIM2_IRQHandler(void) {
 		transmitting--;
 	}
 
+}
+
+void EXTI4_IRQHandler(void) {
+	// RX edge handler
+	exti[PR] = 1 << 4;
+	printf("EDGE");
 }
