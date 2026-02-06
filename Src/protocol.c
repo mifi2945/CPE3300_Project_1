@@ -108,7 +108,7 @@ void transmit(uint8_t length, char* message) {
 
 static void set_state(enum Rx_State state) {
 	// set pins
-	// PB5 = IDLE, PB6 = BUSY, PB7 = COLISSION
+	// PB0 = IDLE, PB1 = BUSY, PB2 = COLISSION
 	gpiob->BSRR = 1 << (0 + (state==IDLE ? 0 : 16));
 	gpiob->BSRR = 1 << (1 + (state==BUSY ? 0 : 16));
 	gpiob->BSRR = 1 << (2 + (state==COLLISION ? 0 : 16));
