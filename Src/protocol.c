@@ -69,7 +69,7 @@ static void init_monitor(void) {
 	gpiob->AFRL &= ~(0b1111<<(4*4));
 	gpiob->AFRL |= (0b0010<<(4*4));
 
-	//init timer 3 for RX
+	//init timer 3 channel 1 for RX
 	RCC->APB1ENR |= RCC_APB1ENR_TIM3EN;
 	tim3->DIER |= (1<<1); // interrupt enable
 	tim3->CCMR1 |= 0b01; // input capture
@@ -178,29 +178,27 @@ void TIM2_IRQHandler(void) {
 }
 
 void TIM3_IRQHandler(void){
-	if (!(tim4->SR & (1<<2))) {
-		tim3->SR = ~(1<<1);
-
-		switch (curr_state) {
-		case IDLE:
-			set_state(BUSY);
-			// start timer to count for timeout
-			tim4->CNT = 0;
-			tim4->CR1 = 1;
-			break;
-		case BUSY:
-			// reset counter since new edge arrived early enough
-			tim4->CNT = 0;
-			rx_bit = gpiob->IDR & (1<<4);
-			break;
-		case COLLISION:
-			set_state(BUSY);
-			// start timer to count for timeout
-			tim4->CNT = 0;
-			tim4->CR1 = 1;
-			break;
-		}
+	switch (curr_state) {
+	case IDLE:
+		set_state(BUSY);
+		// start timer to count for timeout
+		tim4->CNT = 0;
+		tim4->CR1 = 1;
+		break;
+	case BUSY:
+		// reset counter since new edge arrived early enough
+		tim4->CNT = 0;
+		rx_bit = gpiob->IDR & (1<<4);
+		break;
+	case COLLISION:
+		set_state(BUSY);
+		// start timer to count for timeout
+		tim4->CNT = 0;
+		tim4->CR1 = 1;
+		break;
 	}
+
+	tim3->SR = ~(1<<1);
 }
 
 void TIM4_IRQHandler(void){
@@ -224,5 +222,11 @@ void TIM4_IRQHandler(void){
 		break;
 	}
 
+	// check if we need to regenerate edge event if edge and timer interrupt
+	// happened at the same time / really close together
+	if (tim3->SR & (1<<1)) {
+		tim3->SR = ~(1<<1);
+		tim3->EGR = 1<<1;
+	}
 	tim4->SR = ~(1<<2);
 }
