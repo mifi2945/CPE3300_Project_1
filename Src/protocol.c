@@ -54,8 +54,8 @@ static void init_monitor(void) {
 	gpiob->MODER &= ~(0b11<<(1*2));
 	gpiob->MODER |= 0b01<<1*2;
 
-	gpiob->MODER &= ~(0b11<<(1*2));
-	gpiob->MODER |= 0b01<<1*2;
+	gpiob->MODER &= ~(0b11<<(2*2));
+	gpiob->MODER |= 0b01<<2*2;
 
 	set_state(IDLE);
 
@@ -132,7 +132,6 @@ static void set_state(enum Rx_State state) {
 	gpiob->BSRR = 1 << (1 + (state==BUSY ? 0 : 16));
 	gpiob->BSRR = 1 << (2 + (state==COLLISION ? 0 : 16));
 
-
 	// set state variable
 	curr_state = state;
 }
@@ -205,7 +204,7 @@ void TIM4_IRQHandler(void){
 
 	switch (curr_state) {
 	case IDLE:
-		// we don't care if we are idle about interrupt
+		// we don't care about interrupt if we are idle
 		tim4->CR1 = 0;
 		break;
 	case BUSY:
@@ -218,7 +217,7 @@ void TIM4_IRQHandler(void){
 		}
 		break;
 	case COLLISION:
-		// we don't care if we are collision about interrupt
+		// we don't care if about interrupt we are collision
 		tim4->CR1 = 0;
 		break;
 	}
