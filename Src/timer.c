@@ -13,5 +13,5 @@
 
 volatile TIM *tim2 = (TIM*) TIM2;
 volatile TIM *tim3 = (TIM*) TIM3;
-
+volatile TIM *tim4 = (TIM*) TIM4;
 volatile TIM *tim5 = (TIM*) TIM5;

@@ -77,6 +77,7 @@ typedef struct {
 
 extern volatile TIM *tim2;
 extern volatile TIM *tim3;
+extern volatile TIM *tim4;
 extern volatile TIM *tim5;
 
 #endif /* TIMER_H_ */
