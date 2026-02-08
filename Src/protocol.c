@@ -20,6 +20,7 @@ static int transmitting = 0; // false
 
 static enum Rx_State curr_state = IDLE;
 static void set_state(enum Rx_State state);
+static uint8_t rx_bit = 1;
 
 static void init_transmit(void) {
 	MESSAGE[0] = PREAMBLE;
@@ -75,6 +76,7 @@ static void init_monitor(void) {
 	tim3->CCER |= (1<<0) | (0b1<<1) | (1<<3); // set CC1P = 1 non-inverted both edges set CC1NP to 1
 
 	NVIC->ISER[0] = 1 << (TIM3_IRQn);
+	NVIC->IP[TIM3_IRQn] |= 0b0011<<4; // set tim3 less priority than tim4
 
 	tim3->CR1 = 1; // enable timer 3
 
@@ -96,8 +98,7 @@ static void init_monitor(void) {
 	tim4->CCR2 = (F_CPU / 10000) * 11 - 1; // 1.1 millisecond
 
 	NVIC->ISER[0] = 1 << (TIM4_IRQn); //TIM4 is IRQ 30
-//	tim4->CR1 = 1; // timer enable
-
+//	tim4->CR1 = 1; // timer
 }
 
 void init_protocol(void) {
@@ -177,31 +178,32 @@ void TIM2_IRQHandler(void) {
 }
 
 void TIM3_IRQHandler(void){
-	tim3->SR = ~(1<<1);
+	if (!(tim4->SR & (1<<2))) {
+		tim3->SR = ~(1<<1);
 
-	switch (curr_state) {
-	case IDLE:
-		set_state(BUSY);
-		// start timer to count for timeout
-		tim4->CNT = 0;
-		tim4->CR1 = 1;
-		break;
-	case BUSY:
-		// reset counter since new edge arrived early enough
-		tim4->CNT = 0;
-		break;
-	case COLLISION:
-		set_state(BUSY);
-		// start timer to count for timeout
-		tim4->CNT = 0;
-		tim4->CR1 = 1;
-		break;
+		switch (curr_state) {
+		case IDLE:
+			set_state(BUSY);
+			// start timer to count for timeout
+			tim4->CNT = 0;
+			tim4->CR1 = 1;
+			break;
+		case BUSY:
+			// reset counter since new edge arrived early enough
+			tim4->CNT = 0;
+			rx_bit = gpiob->IDR & (1<<4);
+			break;
+		case COLLISION:
+			set_state(BUSY);
+			// start timer to count for timeout
+			tim4->CNT = 0;
+			tim4->CR1 = 1;
+			break;
+		}
 	}
 }
 
 void TIM4_IRQHandler(void){
-	tim4->SR = ~(1<<2);
-
 	switch (curr_state) {
 	case IDLE:
 		// we don't care about interrupt if we are idle
@@ -210,7 +212,7 @@ void TIM4_IRQHandler(void){
 	case BUSY:
 		// check if rx pb4 are currently high or low
 		// if high, this is idle
-		if (gpiob->IDR & (1<<4)) {
+		if (rx_bit) {
 			set_state(IDLE);
 		} else {
 			set_state(COLLISION);
@@ -221,4 +223,6 @@ void TIM4_IRQHandler(void){
 		tim4->CR1 = 0;
 		break;
 	}
+
+	tim4->SR = ~(1<<2);
 }
