@@ -57,10 +57,6 @@ static void init_monitor(void) {
 	tim3->CCER |= (1<<0) | (0b1<<1) | (1<<3);// set CC1P = 11 non-inverted both edges // set CC1NP to 1
 	tim3->CR1 = 1;//enable timer 3
 
-
-
-
-
 	//turn on sysconfig
 	RCC->APB2ENR |= RCC_APB2ENR_SYSCFGEN;
 
