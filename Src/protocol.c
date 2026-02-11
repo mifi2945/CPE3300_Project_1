@@ -58,7 +58,8 @@ static void init_monitor(void) {
 	gpiob->MODER &= ~(0b11<<(2*2));
 	gpiob->MODER |= 0b01<<2*2;
 
-	set_state(IDLE);
+	rx_bit = gpiob->IDR & (1<<4);
+	set_state(rx_bit ? IDLE : COLLISION);
 
 
 	//pb4 for rx alternate function mode
@@ -189,7 +190,6 @@ void TIM3_IRQHandler(void){
 	case BUSY:
 		// reset counter since new edge arrived early enough
 		tim4->CNT = 0;
-
 		break;
 	case COLLISION:
 
