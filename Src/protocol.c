@@ -188,7 +188,6 @@ void TIM3_IRQHandler(void){
 	case BUSY:
 		// reset counter since new edge arrived early enough
 		tim4->CNT = 0;
-		rx_bit = gpiob->IDR & (1<<4);
 		break;
 	case COLLISION:
 		set_state(BUSY);
@@ -197,7 +196,7 @@ void TIM3_IRQHandler(void){
 		tim4->CR1 = 1;
 		break;
 	}
-
+	rx_bit = gpiob->IDR & (1<<4);
 	tim3->SR = ~(1<<1);
 }
 
