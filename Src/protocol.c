@@ -75,24 +75,6 @@ static void init_monitor(void) {
 	tim3->CCMR1 |= 0b01; // input capture
 	tim3->CCER |= (1<<0) | (0b1<<1) | (1<<3); // set CC1P = 1 non-inverted both edges set CC1NP to 1
 
-<<<<<<< HEAD
-	//turn on sysconfig
-	RCC->APB2ENR |= RCC_APB2ENR_SYSCFGEN;
-
-	//port B
-	volatile uint32_t *syscfg = (uint32_t*) SYSCFG;
-	syscfg[3] = 0b0001;
-
-	//exti configuration
-	EXTI->FTSR |= EXTI_FTSR_TR4;
-	EXTI->RTSR |= EXTI_RTSR_TR4;
-	EXTI->PR = EXTI_PR_PR4;//clears pr
-	EXTI->IMR |= EXTI_IMR_IM4;
-
-	//nvic enabele for exti and timer3
-	NVIC->ISER[0] = 1 << (EXTI4_IRQn);
-=======
->>>>>>> 70eccf5a8758ebdd0734e775778a800149e8c783
 	NVIC->ISER[0] = 1 << (TIM3_IRQn);
 	NVIC->IP[TIM3_IRQn] |= 0b0011<<4; // set tim3 less priority than tim4
 
