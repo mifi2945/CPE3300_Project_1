@@ -9,7 +9,6 @@
 
 
 #include <stdio.h>
-#include <math.h>
 #include "uart_driver.h"
 #include "include.h"
 

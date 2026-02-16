@@ -9,6 +9,7 @@
 #define MONITOR_H_
 
 
+int print_rx(char *buffer);
 void init_monitor(void);
 void set_state(enum Rx_State state);
 
