@@ -21,8 +21,8 @@
 static enum Rx_State curr_state = IDLE;
 static uint8_t rx_bit = 1;
 
-static char rx_buffer[258];
-static int rx_length = -1;
+char rx_buffer[258];
+static int rx_length = -5;
 static const int milli = F_CPU / 1000;
 static const int micro = F_CPU / 1000000;
 static uint8_t received = 0;
@@ -102,6 +102,8 @@ void set_state(enum Rx_State state) {
 }
 
 static void read_bit(uint8_t bit_state, uint8_t *curr_char, int8_t *curr_bit) {
+//	printf("%d", bit_state);
+//	printf(" %d", *curr_bit);
 	// clear bit
 	if (bit_state == 0) {
 		rx_buffer[*curr_char] &= ~(1<<(*curr_bit));
@@ -124,11 +126,13 @@ void TIM3_IRQHandler(void){
 	static volatile uint8_t bit = 0;
 	static volatile uint8_t ignore = 0; // if the edge is on the start of the period
 
-	static volatile int time = 0;
+	static volatile uint32_t time = 0;
 
 	// TIM 3 CH 1
 	switch (curr_state) {
 	case IDLE:
+		time = tim3->CCR1;
+//		printf("%u\n", time);
 		// start timer to count for timeout
 		tim4->CNT = 0;
 		tim4->CR1 = 1;
@@ -139,18 +143,18 @@ void TIM3_IRQHandler(void){
 		curr_char = 0;
 		curr_bit = 7;
 		ignore = 0;
-		rx_length = -1;
+		rx_length = -5;
 		read_bit(bit, &curr_char, &curr_bit);
-
-		time = tim3->CCR1;
 		break;
 	case BUSY:
 		// reset counter since new edge arrived early enough
 		tim4->CNT = 0;
 
-		int curr_time = tim3->CCR1;
-		int width = curr_time - time;
-		width *= (width < 0 ? -1 : 1); // abs value
+		uint32_t curr_time = tim3->CCR1;
+		uint32_t width = curr_time - time;
+//		width += (width < 0 ? 0xFFFFFFFF : 0); // abs value
+//		printf("%u ", curr_time);
+//		printf("%u\n", time);
 
 		// opposite bit
 		if (width >= 900 * micro && width <= 1100 * micro) {
@@ -171,9 +175,10 @@ void TIM3_IRQHandler(void){
 		}
 
 		// message complete
-		if (curr_char == rx_length) {
+		if (curr_char-2 == rx_length) {
 			rx_buffer[rx_length] = '\0';
-			printf("%s\n", rx_buffer);
+//			printf("%d", rx_length);
+//			printf("%c", rx_buffer[0]);
 			received = 1;
 		}
 		break;

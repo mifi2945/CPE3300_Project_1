@@ -15,6 +15,8 @@
 #include "uart_driver.h"
 #include "include.h"
 
+extern char rx_buffer[258];
+
 #define F_CPU 16000000UL
 
 // main
@@ -27,6 +29,7 @@ int main(void){
 	// never return
 	for(;;){
 		char c = getchar();
+		printf("%d", rx_buffer[1]);
 		if (c != '\n') {
 			string[length++] = c;
 		} else {

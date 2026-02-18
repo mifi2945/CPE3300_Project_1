@@ -27,5 +27,6 @@
 #include "matrix.h"
 #include "accelerometer.h"
 #include "protocol.h"
+#include "monitor.h"
 
 #endif /* INCLUDE_H_ */
