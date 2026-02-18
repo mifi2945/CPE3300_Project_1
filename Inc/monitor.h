@@ -1,9 +1,14 @@
-/*
- * monitor.h
- *
- *  Created on: Feb 11, 2026
- *      Author: acostal
- */
+/**
+  ******************************************************************************
+  * @file      monitor.h
+  * @students: Mikhail Filippov, Lizbeth Acosta
+  * @section:  111
+  * @instr:    Dr. Varnell
+  * @course    CPE 3300
+  * @assign    Project 1
+  * @brief
+  ******************************************************************************
+  */
 
 #ifndef MONITOR_H_
 #define MONITOR_H_

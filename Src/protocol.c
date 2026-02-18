@@ -1,9 +1,14 @@
-/*
- * protocol.c
- *
- *  Created on: Jan 28, 2026
- *      Author: filippovm, acostal
- */
+/**
+  ******************************************************************************
+  * @file      protocol.c
+  * @students: Mikhail Filippov, Lizbeth Acosta
+  * @section:  111
+  * @instr:    Dr. Varnell
+  * @course    CPE 3300
+  * @assign    Project 1
+  * @brief
+  ******************************************************************************
+  */
 
 #include "protocol.h"
 #include "gpio.h"

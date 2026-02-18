@@ -1,9 +1,14 @@
-/*
- * monitor.c
- *
- *  Created on: Jan 28, 2026
- *      Author: filippovm, acostal
- */
+/**
+  ******************************************************************************
+  * @file      monitor.c
+  * @students: Mikhail Filippov, Lizbeth Acosta
+  * @section:  111
+  * @instr:    Dr. Varnell
+  * @course    CPE 3300
+  * @assign    Project 1
+  * @brief
+  ******************************************************************************
+  */
 
 #include "protocol.h"
 #include "gpio.h"
@@ -15,6 +20,7 @@
 
 static enum Rx_State curr_state = IDLE;
 static uint8_t rx_bit = 1;
+
 
 void init_monitor(void) {
 	// set pins PB0, 1, 2 as IDLE, BUSY, COLISSION outputs
@@ -82,7 +88,6 @@ void set_state(enum Rx_State state) {
 	curr_state = state;
 }
 
-
 void TIM3_IRQHandler(void){
 
 	switch (curr_state) {
@@ -97,7 +102,6 @@ void TIM3_IRQHandler(void){
 		tim4->CNT = 0;
 		break;
 	case COLLISION:
-
 		set_state(BUSY);
 		// start timer to count for timeout
 		tim4->CNT = 0;

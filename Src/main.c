@@ -1,15 +1,17 @@
 /**
- * protocol.c
- *
- *  Created on: Jan 28, 2026
- *      Author: filippovm, acostal
- */
-
-
+  ******************************************************************************
+  * @file      main.c
+  * @students: Mikhail Filippov, Lizbeth Acosta
+  * @section:  111
+  * @instr:    Dr. Varnell
+  * @course    CPE 3300
+  * @assign    Project 1
+  * @brief
+  ******************************************************************************
+  */
 
 
 #include <stdio.h>
-#include <math.h>
 #include "uart_driver.h"
 #include "include.h"
 
