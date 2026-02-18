@@ -21,6 +21,11 @@
 static enum Rx_State curr_state = IDLE;
 static uint8_t rx_bit = 1;
 
+static char rx_buffer[258];
+static int rx_length = -1;
+static const int milli = F_CPU / 1000;
+static const int micro = F_CPU / 1000000;
+static uint8_t received = 0;
 
 void init_monitor(void) {
 	// set pins PB0, 1, 2 as IDLE, BUSY, COLISSION outputs
@@ -77,6 +82,14 @@ void init_monitor(void) {
 //	tim4->CR1 = 1; // timer
 }
 
+int print_rx(char *buffer) {
+	if (received) {
+		buffer = rx_buffer;
+		return (int)rx_length + 2;
+	}
+	return -1;
+}
+
 void set_state(enum Rx_State state) {
 	// set pins
 	// PB0 = IDLE, PB1 = BUSY, PB2 = COLISSION
@@ -88,18 +101,81 @@ void set_state(enum Rx_State state) {
 	curr_state = state;
 }
 
-void TIM3_IRQHandler(void){
+static void read_bit(uint8_t bit_state, uint8_t *curr_char, int8_t *curr_bit) {
+	// clear bit
+	if (bit_state == 0) {
+		rx_buffer[*curr_char] &= ~(1<<(*curr_bit));
+	}
+	// set 1 bit
+	else {
+		rx_buffer[*curr_char] |= (1<<(*curr_bit));
+	}
 
+	(*curr_bit)--;
+	if (*curr_bit == -1) {
+		*curr_bit = 7;
+		(*curr_char)++;
+	}
+}
+
+void TIM3_IRQHandler(void){
+	static volatile uint8_t curr_char = 0;
+	static volatile int8_t curr_bit = 7;
+	static volatile uint8_t bit = 0;
+	static volatile uint8_t ignore = 0; // if the edge is on the start of the period
+
+	static volatile int time = 0;
+
+	// TIM 3 CH 1
 	switch (curr_state) {
 	case IDLE:
-		set_state(BUSY);
 		// start timer to count for timeout
 		tim4->CNT = 0;
 		tim4->CR1 = 1;
+		set_state(BUSY);
+
+		// we always start with a 0 bit, reset all tracking vars
+		bit = 0;
+		curr_char = 0;
+		curr_bit = 7;
+		ignore = 0;
+		rx_length = -1;
+		read_bit(bit, &curr_char, &curr_bit);
+
+		time = tim3->CCR1;
 		break;
 	case BUSY:
 		// reset counter since new edge arrived early enough
 		tim4->CNT = 0;
+
+		int curr_time = tim3->CCR1;
+		int width = curr_time - time;
+		width *= (width < 0 ? -1 : 1); // abs value
+
+		// opposite bit
+		if (width >= 900 * micro && width <= 1100 * micro) {
+			bit ^= 1;
+			read_bit(bit, &curr_char, &curr_bit);
+		} else if (width >= 450 * micro && width <= 550 * micro) {
+			ignore ^= 1;
+			if (!ignore) {
+				read_bit(bit, &curr_char, &curr_bit);
+			}
+		}
+
+		time = curr_time;
+
+		// check if we can read length now
+		if (curr_char == 2 && curr_bit == 7) {
+			rx_length = rx_buffer[1];
+		}
+
+		// message complete
+		if (curr_char == rx_length) {
+			rx_buffer[rx_length] = '\0';
+			printf("%s\n", rx_buffer);
+			received = 1;
+		}
 		break;
 	case COLLISION:
 		set_state(BUSY);
