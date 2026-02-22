@@ -15,19 +15,21 @@
 #include "interrupt.h"
 #include "timer.h"
 #include "stm32f411.h"
-#include <stdio.h>
 #include "monitor.h"
+#include <stdio.h>
+#include <string.h>
 
 static enum Rx_State curr_state = IDLE;
 static uint8_t rx_bit = 1;
 
 char rx_buffer[258];
 static int rx_length = -5;
-static const int milli = F_CPU / 1000;
 static const int micro = F_CPU / 1000000;
 static uint8_t received = 0;
 
 void init_monitor(void) {
+	memset(rx_buffer, 0, sizeof(rx_buffer));
+
 	// set pins PB0, 1, 2 as IDLE, BUSY, COLISSION outputs
 	gpiob->MODER &= ~(0b11<<(0*2));
 	gpiob->MODER |= 0b01<<0*2;
@@ -52,6 +54,7 @@ void init_monitor(void) {
 
 	//init timer 3 channel 1 for RX
 	RCC->APB1ENR |= RCC_APB1ENR_TIM3EN;
+
 	tim3->DIER |= (1<<1); // interrupt enable
 	tim3->CCMR1 |= 0b01; // input capture
 	tim3->CCER |= (1<<0) | (0b1<<1) | (1<<3); // set CC1P = 1 non-inverted both edges set CC1NP to 1
@@ -83,9 +86,13 @@ void init_monitor(void) {
 }
 
 int print_rx(char *buffer) {
-	if (received) {
-		buffer = rx_buffer;
-		return (int)rx_length + 2;
+	// check for received flag AND that the whole message has transmitted
+	// (that is, no errors from transmission device)
+	if (received && rx_buffer[rx_length + 2 - 1] != "\0") {
+		received = 0;
+		strncpy(buffer, rx_buffer, rx_length + 2);
+		memset(rx_buffer, 0, sizeof(rx_buffer));
+		return rx_length + 2;
 	}
 	return -1;
 }
@@ -102,8 +109,6 @@ void set_state(enum Rx_State state) {
 }
 
 static void read_bit(uint8_t bit_state, uint8_t *curr_char, int8_t *curr_bit) {
-//	printf("%d", bit_state);
-//	printf(" %d", *curr_bit);
 	// clear bit
 	if (bit_state == 0) {
 		rx_buffer[*curr_char] &= ~(1<<(*curr_bit));
@@ -126,13 +131,13 @@ void TIM3_IRQHandler(void){
 	static volatile uint8_t bit = 0;
 	static volatile uint8_t ignore = 0; // if the edge is on the start of the period
 
-	static volatile uint32_t time = 0;
+	static volatile uint16_t time = 0;
 
 	// TIM 3 CH 1
 	switch (curr_state) {
 	case IDLE:
 		time = tim3->CCR1;
-//		printf("%u\n", time);
+
 		// start timer to count for timeout
 		tim4->CNT = 0;
 		tim4->CR1 = 1;
@@ -150,11 +155,8 @@ void TIM3_IRQHandler(void){
 		// reset counter since new edge arrived early enough
 		tim4->CNT = 0;
 
-		uint32_t curr_time = tim3->CCR1;
-		uint32_t width = curr_time - time;
-//		width += (width < 0 ? 0xFFFFFFFF : 0); // abs value
-//		printf("%u ", curr_time);
-//		printf("%u\n", time);
+		uint16_t curr_time = tim3->CCR1;
+		uint16_t width = curr_time - time;
 
 		// opposite bit
 		if (width >= 900 * micro && width <= 1100 * micro) {
@@ -175,11 +177,12 @@ void TIM3_IRQHandler(void){
 		}
 
 		// message complete
-		if (curr_char-2 == rx_length) {
-			rx_buffer[rx_length] = '\0';
-//			printf("%d", rx_length);
-//			printf("%c", rx_buffer[0]);
+		if (rx_length > 0 && curr_char-2 == rx_length) {
 			received = 1;
+			bit = 0;
+			curr_char = 0;
+			curr_bit = 7;
+			ignore = 0;
 		}
 		break;
 	case COLLISION:
