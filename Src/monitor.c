@@ -48,6 +48,9 @@ void init_monitor(void) {
 	gpiob->MODER &= ~(0b11<<(4*2));
 	gpiob->MODER |= (0b10<<(4*2));
 
+	// no PUPDR
+	gpiob->PUPDR &= ~(0b11<<(4*2));
+
 	// AF02
 	gpiob->AFRL &= ~(0b1111<<(4*4));
 	gpiob->AFRL |= (0b0010<<(4*4));

@@ -30,6 +30,9 @@ static void init_transmit(void) {
 	MESSAGE[0] = PREAMBLE;
 
 	gpiob->MODER |= (0b01<<12);
+	gpiob->PUPDR &= ~(0b11<<(6*2));
+	gpiob->PUPDR |= 0b01<<(6*2);
+	gpiob->OTYPER |= 1<<6;
 	gpiob->BSRR = 1<<6; // set high
 
 
