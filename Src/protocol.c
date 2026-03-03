@@ -75,8 +75,8 @@ void block_tx() {
 		// if we were previously transmitting something, make sure to flag this
 		request_retransmit = 1;
 	}
-	transmitting = 0; // block TX
 	tx_ok = 0;
+	transmitting = 0; // block TX
 	gpiob->BSRR = 1<<(6); // set idle
 }
 
@@ -85,8 +85,8 @@ void retransmit(void) {
 		curr_char = 0;
 		curr_bit = 7;
 		transmitting = (MESSAGE[1] + 2) * 8 * 2 + 1;
+		request_retransmit = 0;
 	}
-	request_retransmit = 0;
 }
 
 int transmit(uint8_t length, char* message) {

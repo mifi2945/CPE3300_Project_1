@@ -26,6 +26,7 @@ static uint8_t rx_bit = 1;
 char rx_buffer[258];
 static int rx_length = -5;
 static uint8_t received = 0;
+static uint8_t wait_flag = 0;
 
 static const int milli = F_CPU / 1000;
 static const int micro = F_CPU / 1000000;
@@ -119,7 +120,7 @@ void init_monitor(void) {
 }
 
 int generate_wait() {
-	return (rand() % WAIT_MAX + 1) * milli;
+	return (int)((rand() % WAIT_MAX + 1) * (F_CPU/WAIT_MAX));
 }
 
 int print_rx(char *buffer) {
@@ -226,7 +227,8 @@ void TIM3_IRQHandler(void){
 		set_state(BUSY);
 
 		// enable random wait
-		tim5->CCR1 = F_CPU / 1000; // TODO
+		wait_flag = 1;
+		tim5->CCR1 = generate_wait();
 		tim5->CNT = 0;
 		tim5->CR1 = 1;
 
@@ -243,13 +245,21 @@ void TIM4_IRQHandler(void){
 	switch (curr_state) {
 	case IDLE:
 		// we don't care about interrupt if we are idle
-		tim4->CR1 = 0;
+//		tim4->CR1 = 0;
+		if (!wait_flag) {
+			retransmit();
+			allow_tx();
+		}
 		break;
 	case BUSY:
 		// check if rx pb4 are currently high or low
 		// if high, this is idle
 		if (rx_bit) {
 			set_state(IDLE);
+			if (!wait_flag) {
+				retransmit();
+				allow_tx();
+			}
 		} else {
 			set_state(COLLISION);
 			block_tx();
@@ -257,7 +267,7 @@ void TIM4_IRQHandler(void){
 		break;
 	case COLLISION:
 		// we don't care if about interrupt we are collision
-		tim4->CR1 = 0;
+//		tim4->CR1 = 0;
 		break;
 	}
 
@@ -275,6 +285,5 @@ void TIM5_IRQHandler(void){
 	tim5->CR1 = 0;
 	tim5->CNT = 0;
 
-	retransmit();
-	allow_tx();
+	wait_flag = 0;
 }
