@@ -61,31 +61,31 @@ void stop_song(void) {
 	speaker_stop();
 }
 
-void TIM5_IRQHandler(void) {
-	if (tim5->SR & 1) {
-		// update event flagged; ARR
-		// clear flag
-		tim5->SR = ~0b1;
-
-		if (duration > 0) {
-			// set delay by adjusting how often handler is called
-			// through update event
-			tim5->ARR = F_CPU / 1000 * song->duration;
-			// for channel event, space between notes
-			tim5->CCR2 = F_CPU / 1000 * (song->duration - 10);
-
-			speaker_tone(song->freq);
-			song++;
-			duration--;
-		}
-	}
-	if (tim5->SR & (1<<2)) {
-		// channel event; CCRx
-		// space between notes
-		tim5->SR = ~(1<<2);
-		if (start == 0) {
-			speaker_stop();
-		}
-		start = 0;
-	}
-}
+//void TIM5_IRQHandler(void) {
+//	if (tim5->SR & 1) {
+//		// update event flagged; ARR
+//		// clear flag
+//		tim5->SR = ~0b1;
+//
+//		if (duration > 0) {
+//			// set delay by adjusting how often handler is called
+//			// through update event
+//			tim5->ARR = F_CPU / 1000 * song->duration;
+//			// for channel event, space between notes
+//			tim5->CCR2 = F_CPU / 1000 * (song->duration - 10);
+//
+//			speaker_tone(song->freq);
+//			song++;
+//			duration--;
+//		}
+//	}
+//	if (tim5->SR & (1<<2)) {
+//		// channel event; CCRx
+//		// space between notes
+//		tim5->SR = ~(1<<2);
+//		if (start == 0) {
+//			speaker_stop();
+//		}
+//		start = 0;
+//	}
+//}

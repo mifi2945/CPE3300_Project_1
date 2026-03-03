@@ -42,13 +42,13 @@ int main(void){
 	init_protocol();
 
 	int length = 0;
-	char string[255];
-	char incoming[257];
+	char string[255] = {0};
+	char incoming[257] = {0};
 	// never return
 	for(;;){
 		// use nonblocking USART get_char() so we can poll for RX
 		int ch = nonblocking_getchar();
-		int incoming_length = print_rx(&incoming);
+		int incoming_length = print_rx(incoming);
 
 		if (incoming_length > -1) {
 			printf("Received message: ");
@@ -61,9 +61,7 @@ int main(void){
 			if (c != '\n') {
 				string[length++] = c;
 			} else {
-				// TODO can add logic to make sure string !> 255
-				// but no reason if it is a precondition of project
-				transmit(length, string);
+				while(transmit(length, string) == -1); // transmit until success
 				length = 0;
 			}
 		}

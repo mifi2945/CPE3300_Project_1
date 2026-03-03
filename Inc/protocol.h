@@ -22,6 +22,9 @@ enum Rx_State {
 };
 
 void init_protocol(void);
-void transmit(uint8_t length, char* message);
+void allow_tx();
+void block_tx();
+void retransmit(void);
+int transmit(uint8_t length, char* message);
 
 #endif /* PROTOCOL_H_ */

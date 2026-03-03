@@ -16,18 +16,23 @@
 #include "timer.h"
 #include "stm32f411.h"
 #include "monitor.h"
-#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 
-static enum Rx_State curr_state = IDLE;
+enum Rx_State curr_state = IDLE;
 static uint8_t rx_bit = 1;
 
 char rx_buffer[258];
 static int rx_length = -5;
-static const int micro = F_CPU / 1000000;
 static uint8_t received = 0;
 
-void init_monitor(void) {
+static const int milli = F_CPU / 1000;
+static const int micro = F_CPU / 1000000;
+static const int WAIT_MAX = 1000;
+
+
+static void init_signals(void) {
 	memset(rx_buffer, 0, sizeof(rx_buffer));
 
 	// set pins PB0, 1, 2 as IDLE, BUSY, COLISSION outputs
@@ -42,8 +47,9 @@ void init_monitor(void) {
 
 	rx_bit = gpiob->IDR & (1<<4);
 	set_state(rx_bit ? IDLE : COLLISION);
+}
 
-
+static void init_RX(void) {
 	//pb4 for rx alternate function mode
 	gpiob->MODER &= ~(0b11<<(4*2));
 	gpiob->MODER |= (0b10<<(4*2));
@@ -66,7 +72,9 @@ void init_monitor(void) {
 	NVIC->IP[TIM3_IRQn] |= 0b0011<<4; // set tim3 less priority than tim4
 
 	tim3->CR1 = 1; // enable timer 3
+}
 
+static void init_TIM4(void) {
 	//////////////////////////////////////////////////////////
 	// init timer 4 for monitor
 	// PB7 for TIM4_CH2 alternate function 02
@@ -85,7 +93,33 @@ void init_monitor(void) {
 	tim4->CCR2 = (F_CPU / 10000) * 11 - 1; // 1.1 millisecond
 
 	NVIC->ISER[0] = 1 << (TIM4_IRQn); //TIM4 is IRQ 30
-//	tim4->CR1 = 1; // timer
+}
+
+static void init_TIM5(void) {
+	RCC->APB1ENR |= RCC_APB1ENR_TIM5EN;
+	tim5->DIER |= (1<<1); // interrupt enable ch1
+	tim5->CCMR1 |= (0b001<<4); // OC1M, active level on match
+
+	// 1 second
+//	tim5->PCS = 255;
+	tim5->CCR1 = F_CPU;
+
+	NVIC->ISER[1] = 1 << (TIM5_IRQn-32); // TIM5 is IRQ 50
+//	tim5->CR1 = 1;
+}
+
+void init_monitor(void) {
+	init_signals();
+	init_RX();
+	init_TIM4();
+	init_TIM5();
+
+	// seed srand
+	srand(tim3->CNT);
+}
+
+int generate_wait() {
+	return (rand() % WAIT_MAX + 1) * milli;
 }
 
 int print_rx(char *buffer) {
@@ -190,6 +224,12 @@ void TIM3_IRQHandler(void){
 		break;
 	case COLLISION:
 		set_state(BUSY);
+
+		// enable random wait
+		tim5->CCR1 = F_CPU / 1000; // TODO
+		tim5->CNT = 0;
+		tim5->CR1 = 1;
+
 		// start timer to count for timeout
 		tim4->CNT = 0;
 		tim4->CR1 = 1;
@@ -212,6 +252,7 @@ void TIM4_IRQHandler(void){
 			set_state(IDLE);
 		} else {
 			set_state(COLLISION);
+			block_tx();
 		}
 		break;
 	case COLLISION:
@@ -227,4 +268,13 @@ void TIM4_IRQHandler(void){
 		tim3->EGR = 1<<1;
 	}
 	tim4->SR = ~(1<<2);
+}
+
+void TIM5_IRQHandler(void){
+	tim5->SR = ~(1<<1);
+	tim5->CR1 = 0;
+	tim5->CNT = 0;
+
+	retransmit();
+	allow_tx();
 }

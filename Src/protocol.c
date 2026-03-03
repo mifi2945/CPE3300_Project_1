@@ -24,11 +24,14 @@ static int curr_char = 0;
 static int curr_bit = 7;
 static int transmitting = 0; // false
 
-
+extern enum Rx_State curr_state;
+uint8_t tx_ok = 1;
+int request_retransmit = 0;
 
 static void init_transmit(void) {
 	MESSAGE[0] = PREAMBLE;
 
+	// PB6
 	gpiob->MODER |= (0b01<<12);
 	gpiob->PUPDR &= ~(0b11<<(6*2));
 	gpiob->PUPDR |= 0b01<<(6*2);
@@ -63,23 +66,51 @@ void init_protocol(void) {
 	init_monitor();
 }
 
-void transmit(uint8_t length, char* message) {
-	MESSAGE[0] = PREAMBLE;
-	MESSAGE[1] = length;
-
-	// message
-	for(int i = 0; i < length; ++i) {
-		MESSAGE[i+2] = message[i];
-	}
-
-	curr_char = 0;
-	curr_bit = 7;
-				// length + 2 bytes in MESSAGE
-				// * 8 bits per byte
-				// * 2 bits per bit for Manchester
-	transmitting = (length + 2) * 8 * 2 + 1; // +1 for going back to idle
+void allow_tx() {
+	tx_ok = 1;
 }
 
+void block_tx() {
+	if (transmitting) {
+		// if we were previously transmitting something, make sure to flag this
+		request_retransmit = 1;
+	}
+	transmitting = 0; // block TX
+	tx_ok = 0;
+	gpiob->BSRR = 1<<(6); // set idle
+}
+
+void retransmit(void) {
+	if (request_retransmit) {
+		curr_char = 0;
+		curr_bit = 7;
+		transmitting = (MESSAGE[1] + 2) * 8 * 2 + 1;
+	}
+	request_retransmit = 0;
+}
+
+int transmit(uint8_t length, char* message) {
+	// ensure no message is overwritten
+	if (!transmitting && tx_ok && curr_state == IDLE) {
+		MESSAGE[0] = PREAMBLE;
+		MESSAGE[1] = length;
+
+		// message
+		for(int i = 0; i < length; ++i) {
+			MESSAGE[i+2] = message[i];
+		}
+
+		curr_char = 0;
+		curr_bit = 7;
+					// length + 2 bytes in MESSAGE
+					// * 8 bits per byte
+					// * 2 bits per bit for Manchester
+		transmitting = (length + 2) * 8 * 2 + 1; // +1 for going back to idle
+		return 0;
+	}
+	// this function will keep getting called until message is successfully transmitted
+	return -1;
+}
 
 
 // transmit handler
